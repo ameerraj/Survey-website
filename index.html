@@ -220,25 +220,40 @@
     <script type="module">
         // Import Firebase modules
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js"; // Removed unused signInWithCustomToken
         import { getFirestore, collection, addDoc, serverTimestamp, setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         // --- Configuration ---
-        // ** MODIFICATION START **
-        // Directly include your Firebase configuration object here
-        // Replace with your actual Firebase config details!
+        // ** Directly include your Firebase configuration object here **
         const firebaseConfig = {
           apiKey: "AIzaSyBRSBhy6Exwkv0XouU547zEy7e5zqP02JY",
           authDomain: "survey-website-a728a.firebaseapp.com",
           projectId: "survey-website-a728a",
-          storageBucket: "survey-website-a728a.firebasestorage.app", // Corrected field name
+          storageBucket: "survey-website-a728a.appspot.com", // Corrected this based on typical Firebase setup
           messagingSenderId: "14331803341",
           appId: "1:14331803341:web:471a537075889a51d81b84",
           measurementId: "G-79LRHKKPPE" // Optional
         };
+
+        // ** MODIFICATION START: Removed the logic trying to read __firebase_config **
+        // // MANDATORY: Use __firebase_config provided by the Canvas environment
+        // let firebaseConfig = null; // We define it directly above now
+        // try {
+        //     // Check if __firebase_config is defined and not an empty string before parsing
+        //     if (typeof __firebase_config !== 'undefined' && __firebase_config.trim() !== '') {
+        //         firebaseConfig = JSON.parse(__firebase_config);
+        //     } else {
+        //          console.warn("__firebase_config is undefined or empty. Using default empty object.");
+        //          firebaseConfig = {}; // Use an empty object if config is missing/empty
+        //     }
+        // } catch (e) {
+        //     console.error("Error parsing Firebase config:", e);
+        //     // ...
+        // }
         // ** MODIFICATION END **
 
         // Use a default appId if __app_id is not available (useful for local testing)
+        // ** Note: For standalone, __app_id likely won't exist, so 'standalone-html-app-id' will be used. **
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'standalone-html-app-id';
 
 
@@ -259,7 +274,6 @@
 
         // --- Reviews Data ---
         // !!! REPLACE WITH YOUR ACTUAL REVIEWS !!!
-        // Add more reviews as needed (aim for a balance of human/ai)
         const allReviews = [
             { id: 'h1', type: 'human', text: "Just got the new XPS 15 and it's a beast. The screen is gorgeous, perfect for photo editing. Performance is top-notch for coding and even some light gaming. Battery life is decent, could be better under heavy load, but it charges fast. Build quality feels premium. A bit pricey, but worth it if you need power and portability. Highly recommend!" },
             { id: 'ai1', type: 'ai', text: "The computational device designated Model X presents a high-resolution display optimal for visual tasks. Its processing capabilities facilitate efficient execution of complex software, including development environments and recreational simulations. Energy persistence is adequate for typical usage patterns, with rapid recharge cycles mitigating downtime. The chassis construction employs superior materials, reflecting a premium market position. Financial outlay is considerable, yet justifiable for users requiring substantial performance metrics within a mobile form factor." },
@@ -271,11 +285,9 @@
         let shuffledReviews = []; // Will hold the randomized reviews for the current user
 
         // --- DOM Elements ---
-        // Ensure DOM elements are accessed only after the DOM is fully loaded
         let introSection, demographicsSection, reviewSection, loadingSection, thankYouSection, errorSection, errorMessage, displayUserId;
         let startButton, demographicsForm, demographicsError, ratingsForm, ratingError, reviewTitle, reviewLabelContainer, reviewContent, nextReviewButton;
 
-         // Function to get DOM elements safely
          function getDOMElements() {
             introSection = document.getElementById('intro-section');
             demographicsSection = document.getElementById('demographics-section');
@@ -296,38 +308,29 @@
             nextReviewButton = document.getElementById('next-review-button');
          }
 
-
         // --- Functions ---
         function showSection(sectionId) {
-             // Ensure elements are available before trying to modify them
-            if (!introSection) getDOMElements(); // Get elements if not already done
+            if (!introSection) getDOMElements();
 
             [introSection, demographicsSection, reviewSection, loadingSection, thankYouSection, errorSection].forEach(section => {
-                 if (section) { // Check if the element exists
-                    if (section.id === sectionId) {
-                        section.style.display = 'block';
-                    } else {
-                        section.style.display = 'none';
-                    }
+                 if (section) {
+                    section.style.display = (section.id === sectionId) ? 'block' : 'none';
                  } else {
-                     console.error(`Element with potential ID matching "${sectionId}" or others not found during showSection call.`);
+                     console.error(`Missing element needed for showSection (target was ${sectionId})`);
                  }
             });
         }
 
         function showError(message) {
-            // Ensure elements are available
             if (!errorMessage || !errorSection) getDOMElements();
 
             if (errorMessage && errorSection) {
                 errorMessage.textContent = message;
                 showSection('error-section');
             }
-            console.error("Experiment Error:", message);
+            console.error("Experiment Error:", message); // Keep logging error
         }
 
-
-        // Shuffle array in place (Fisher-Yates)
         function shuffleArray(array) {
             for (let i = array.length - 1; i > 0; i--) {
                 const j = Math.floor(Math.random() * (i + 1));
@@ -336,16 +339,15 @@
         }
 
         function assignGroupAndShuffleReviews() {
-            assignedGroup = Math.floor(Math.random() * 3) + 1; // 1, 2, or 3
+            assignedGroup = Math.floor(Math.random() * 3) + 1;
             console.log("Assigned Group:", assignedGroup);
-            shuffledReviews = [...allReviews]; // Create a copy
-            shuffleArray(shuffledReviews); // Randomize review order
+            shuffledReviews = [...allReviews];
+            shuffleArray(shuffledReviews);
             console.log("Shuffled Reviews:", shuffledReviews.map(r => r.id));
         }
 
         function displayCurrentReview() {
-            // Ensure elements are available
-             if (!reviewTitle) getDOMElements();
+            if (!reviewTitle) getDOMElements();
 
             if (currentReviewIndex >= shuffledReviews.length) {
                 submitAllData();
@@ -354,33 +356,28 @@
 
             const review = shuffledReviews[currentReviewIndex];
 
-             // Check if elements exist before accessing properties
              if (reviewTitle) reviewTitle.textContent = `Review ${currentReviewIndex + 1} of ${shuffledReviews.length}`;
              if (reviewContent) reviewContent.textContent = review.text;
-
-            // Clear previous label and form
              if (reviewLabelContainer) reviewLabelContainer.innerHTML = '';
              if (ratingsForm) ratingsForm.reset();
-             if (ratingError) ratingError.classList.add('hidden'); // Hide error message
+             if (ratingError) ratingError.classList.add('hidden');
 
 
-            // Determine and display label based on group and review type
             let labelText = '';
-            let labelType = 'none'; // To store in data
-            let labelClass = 'review-label'; // CSS class
+            let labelType = 'none';
+            let labelClass = 'review-label';
 
             if (review.type === 'ai') {
                 if (assignedGroup === 2) {
                     labelText = 'This content was generated by AI.';
                     labelType = 'legal';
                 } else if (assignedGroup === 3) {
-                    // Simulate detector confidence (could be randomized or fixed)
                     const confidence = Math.floor(Math.random() * 11) + 90; // 90-100%
                     labelText = `Our AI detector flags this as ${confidence}% AI-generated.`;
                     labelType = 'technical';
-                    labelClass += ' technical'; // Add specific class for technical label
+                    labelClass += ' technical';
                 }
-            } // No label for human reviews or control group AI reviews
+            }
 
             if (labelText && reviewLabelContainer) {
                 const labelElement = document.createElement('span');
@@ -389,17 +386,11 @@
                 reviewLabelContainer.appendChild(labelElement);
             }
 
-             // Update button text for the last review
              if (nextReviewButton) {
-                if (currentReviewIndex === shuffledReviews.length - 1) {
-                    nextReviewButton.textContent = 'Submit All Responses';
-                } else {
-                    nextReviewButton.textContent = 'Next Review';
-                }
+                nextReviewButton.textContent = (currentReviewIndex === shuffledReviews.length - 1) ? 'Submit All Responses' : 'Next Review';
              }
 
-
-             participantData.responses[currentReviewIndex] = { // Pre-populate response structure
+             participantData.responses[currentReviewIndex] = {
                 reviewId: review.id,
                 reviewType: review.type,
                 labelShown: labelType
@@ -413,33 +404,25 @@
             console.log("Submitting data:", participantData);
 
             if (!db) {
-                showError("Database connection not established.");
+                showError("Database connection not established. Cannot submit.");
                 return;
             }
             if (!userId) {
-                // If submitting without full auth, generate a temporary ID
                 userId = `anon-${crypto.randomUUID()}`;
                 console.warn("User not fully authenticated, using temporary ID:", userId);
-                 // showError("User authentication failed.");
-                 // return; // Decide if submission should proceed without full auth
             }
 
-             // Ensure userId is added to the data payload right before submission
             const dataToSave = {
-                ...participantData.demographics, // Spread demographics data directly
-                userId: userId, // Ensure userId is included
+                ...participantData.demographics,
+                userId: userId,
                 assignedGroup: assignedGroup,
                 responses: participantData.responses,
-                timestamp: serverTimestamp() // Add server timestamp
+                timestamp: serverTimestamp()
             };
 
-
             try {
-                 // Construct the full collection path including appId
-                 // Using public path as suggested in requirements for experiment data
-                 // ** Using a simpler path for standalone deployment **
-                 // const collectionPath = `artifacts/${appId}/public/data/experimentResponses`;
-                const collectionPath = `experimentResponses/${appId}`; // Simpler path
+                // ** Simpler path for standalone deployment **
+                const collectionPath = `experimentResponses/${appId}`;
                 const responsesCol = collection(db, collectionPath);
 
                 console.log("Saving to collection:", collectionPath);
@@ -447,7 +430,7 @@
 
                 const docRef = await addDoc(responsesCol, dataToSave);
                 console.log("Document written with ID: ", docRef.id);
-                 if (displayUserId) displayUserId.textContent = userId; // Show user ID on thank you page
+                 if (displayUserId) displayUserId.textContent = userId;
                 showSection('thank-you-section');
             } catch (error) {
                 console.error("Error adding document: ", error);
@@ -457,75 +440,78 @@
 
         // --- Firebase Initialization and Auth ---
         async function initializeFirebase() {
-             // Moved config check here to ensure showError can be called safely
-             if (!firebaseConfig || Object.keys(firebaseConfig).length === 0 || !firebaseConfig.apiKey) { // Added check for apiKey
-                 // Check if showError is available, otherwise log and alert
-                 if (typeof showError === 'function') {
-                    showError("Firebase configuration is missing or invalid. Cannot initialize.");
-                 } else {
-                     console.error("Firebase configuration is missing or invalid. Cannot initialize.");
-                     alert("Critical Error: Firebase configuration missing or invalid.");
-                 }
-                 // ** MODIFICATION START: Removed the return false here **
-                 // return false;
-                 // ** MODIFICATION END **
+             // ** Check the hardcoded config FIRST **
+             console.log("Verifying hardcoded firebaseConfig...");
+             console.log(firebaseConfig); // Log the object
+             if (!firebaseConfig || Object.keys(firebaseConfig).length === 0 || !firebaseConfig.apiKey) {
+                 const errorMsg = "Firebase configuration object is missing key details (like apiKey). Cannot initialize.";
+                 showError(errorMsg);
+                 // ** Return false here IS appropriate because init will definitely fail **
+                 return false;
              }
+             console.log("Hardcoded firebaseConfig appears valid.");
 
              try {
+                console.log("Attempting initializeApp...");
                 app = initializeApp(firebaseConfig);
+                console.log("initializeApp successful.");
                 db = getFirestore(app);
+                console.log("getFirestore successful.");
                 auth = getAuth(app);
+                console.log("getAuth successful.");
                 console.log("Firebase initialized successfully.");
 
-                // Sign in the user - For standalone, anonymous auth is usually sufficient
-                 console.log("Attempting anonymous sign in...");
-                 await signInAnonymously(auth);
+                console.log("Attempting anonymous sign in...");
+                await signInAnonymously(auth);
+                console.log("signInAnonymously call completed.");
 
-                // Listen for auth state changes to get the user ID
                 return new Promise((resolve) => {
+                    console.log("Setting up onAuthStateChanged listener...");
                     onAuthStateChanged(auth, (user) => {
+                        console.log("onAuthStateChanged callback triggered. User:", user);
                         if (user) {
                             userId = user.uid;
                             console.log("User signed in anonymously, UID:", userId);
                             resolve(true); // Firebase is ready
                         } else {
-                            console.error("Anonymous sign-in failed.");
-                            // Decide if you want to block or allow submission with a temp ID
-                            // For simplicity, let's allow it for now but log a warning.
+                            console.error("Anonymous sign-in failed OR user signed out.");
                             console.warn("Proceeding without full anonymous auth. A temporary ID will be used on submit.");
-                            userId = null; // Ensure userId is null if auth fails initially
-                            resolve(true); // Still resolve true to allow the flow to continue
-                            // Optionally call showError("Authentication failed, but proceeding.")
+                            userId = null;
+                            resolve(true); // Still resolve true to allow the flow to continue for now
                         }
                     }, (error) => {
                         console.error("Auth state change error:", error);
-                         showError(`Authentication error: ${error.message}`);
+                        showError(`Authentication error: ${error.message}`);
                         resolve(false); // Firebase auth failed
                     });
                 });
 
             } catch (error) {
+                // This catch block will now likely show the *real* initialization error
                 console.error("Firebase initialization failed:", error);
-                 showError(`Firebase initialization failed: ${error.message}`);
+                showError(`Firebase initialization failed: ${error.message}. Check config values and API key restrictions.`);
                 return false; // Firebase init failed
             }
         }
 
         // --- Event Listeners Setup ---
-        // Use DOMContentLoaded to ensure elements exist before adding listeners
          document.addEventListener('DOMContentLoaded', () => {
-             getDOMElements(); // Get all DOM elements once the DOM is ready
+             getDOMElements();
 
-             // Now safely add event listeners
              if(startButton) {
                 startButton.addEventListener('click', () => {
-                    // Initialize Firebase first
+                    console.log("Start button clicked. Initializing Firebase...");
                     initializeFirebase().then(success => {
+                        console.log("Firebase initialization promise resolved with:", success);
                         if (success) {
-                            assignGroupAndShuffleReviews(); // Assign group and shuffle reviews only after successful auth
+                            console.log("Firebase ready. Assigning group and shuffling reviews...");
+                            assignGroupAndShuffleReviews();
+                            console.log("Showing demographics section...");
                             showSection('demographics-section');
+                        } else {
+                            console.error("Firebase initialization failed, cannot proceed.");
+                            // showError should have been called within initializeFirebase
                         }
-                        // If !success, showError has already been called
                     });
                 });
              } else {
@@ -536,7 +522,7 @@
              if(demographicsForm) {
                 demographicsForm.addEventListener('submit', (e) => {
                     e.preventDefault();
-                    if (demographicsError) demographicsError.classList.add('hidden'); // Hide previous errors
+                    if (demographicsError) demographicsError.classList.add('hidden');
                     const formData = new FormData(demographicsForm);
                     const age = formData.get('age');
                     const gender = formData.get('gender');
@@ -559,9 +545,9 @@
                         return;
                     }
 
-                    participantData.demographics = { age: parseInt(age), gender, education }; // Store age as number
+                    participantData.demographics = { age: parseInt(age), gender, education };
                     console.log("Demographics collected:", participantData.demographics);
-                    displayCurrentReview(); // Show the first review
+                    displayCurrentReview();
                 });
              } else {
                  console.error("Demographics form not found.");
@@ -571,7 +557,7 @@
             if(ratingsForm) {
                 ratingsForm.addEventListener('submit', (e) => {
                     e.preventDefault();
-                   if (ratingError) ratingError.classList.add('hidden'); // Hide previous errors
+                   if (ratingError) ratingError.classList.add('hidden');
                     const formData = new FormData(ratingsForm);
                     const ratingCredibility = formData.get('ratingCredibility');
                     const ratingTrustworthiness = formData.get('ratingTrustworthiness');
@@ -579,10 +565,9 @@
 
                     if (!ratingCredibility || !ratingTrustworthiness || !ratingWellWritten) {
                         if (ratingError) ratingError.classList.remove('hidden');
-                        return; // Stop if not all ratings are selected
+                        return;
                     }
 
-                    // Save ratings for the current review
                     if (participantData.responses[currentReviewIndex]) {
                         participantData.responses[currentReviewIndex].ratingCredibility = parseInt(ratingCredibility);
                         participantData.responses[currentReviewIndex].ratingTrustworthiness = parseInt(ratingTrustworthiness);
@@ -590,7 +575,7 @@
                         console.log(`Ratings for review ${currentReviewIndex + 1} collected:`, participantData.responses[currentReviewIndex]);
 
                         currentReviewIndex++;
-                        displayCurrentReview(); // Display next review or submit
+                        displayCurrentReview();
                     } else {
                         console.error("Error: Response structure not initialized for index", currentReviewIndex);
                         showError("An internal error occurred while saving ratings.");
@@ -601,7 +586,7 @@
             }
 
             // --- Initial Load ---
-             showSection('intro-section'); // Show intro first
+             showSection('intro-section');
          });
 
 
