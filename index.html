@@ -224,23 +224,22 @@
         import { getFirestore, collection, addDoc, serverTimestamp, setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         // --- Configuration ---
-        // MANDATORY: Use __app_id provided by the Canvas environment, default for local testing
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-exp-app-id';
-        // MANDATORY: Use __firebase_config provided by the Canvas environment
-        let firebaseConfig = null;
-        try {
-            // Check if __firebase_config is defined and not an empty string before parsing
-            if (typeof __firebase_config !== 'undefined' && __firebase_config.trim() !== '') {
-                firebaseConfig = JSON.parse(__firebase_config);
-            } else {
-                 console.warn("__firebase_config is undefined or empty. Using default empty object.");
-                 firebaseConfig = {}; // Use an empty object if config is missing/empty
-            }
-        } catch (e) {
-            console.error("Error parsing Firebase config:", e);
-            // Don't call showError here yet as DOM might not be ready
-            // We'll check firebaseConfig later in initializeFirebase
-        }
+        // ** MODIFICATION START **
+        // Directly include your Firebase configuration object here
+        // Replace with your actual Firebase config details!
+        const firebaseConfig = {
+          apiKey: "AIzaSyBRSBhy6Exwkv0XouU547zEy7e5zqP02JY",
+          authDomain: "survey-website-a728a.firebaseapp.com",
+          projectId: "survey-website-a728a",
+          storageBucket: "survey-website-a728a.firebasestorage.app", // Corrected field name
+          messagingSenderId: "14331803341",
+          appId: "1:14331803341:web:471a537075889a51d81b84",
+          measurementId: "G-79LRHKKPPE" // Optional
+        };
+        // ** MODIFICATION END **
+
+        // Use a default appId if __app_id is not available (useful for local testing)
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'standalone-html-app-id';
 
 
         // Enable Firestore logging for debugging
@@ -418,8 +417,11 @@
                 return;
             }
             if (!userId) {
-                showError("User authentication failed.");
-                 return;
+                // If submitting without full auth, generate a temporary ID
+                userId = `anon-${crypto.randomUUID()}`;
+                console.warn("User not fully authenticated, using temporary ID:", userId);
+                 // showError("User authentication failed.");
+                 // return; // Decide if submission should proceed without full auth
             }
 
              // Ensure userId is added to the data payload right before submission
@@ -435,7 +437,9 @@
             try {
                  // Construct the full collection path including appId
                  // Using public path as suggested in requirements for experiment data
-                const collectionPath = `artifacts/${appId}/public/data/experimentResponses`;
+                 // ** Using a simpler path for standalone deployment **
+                 // const collectionPath = `artifacts/${appId}/public/data/experimentResponses`;
+                const collectionPath = `experimentResponses/${appId}`; // Simpler path
                 const responsesCol = collection(db, collectionPath);
 
                 console.log("Saving to collection:", collectionPath);
@@ -454,13 +458,13 @@
         // --- Firebase Initialization and Auth ---
         async function initializeFirebase() {
              // Moved config check here to ensure showError can be called safely
-             if (!firebaseConfig || Object.keys(firebaseConfig).length === 0) {
+             if (!firebaseConfig || Object.keys(firebaseConfig).length === 0 || !firebaseConfig.apiKey) { // Added check for apiKey
                  // Check if showError is available, otherwise log and alert
                  if (typeof showError === 'function') {
-                    showError("Firebase configuration is missing or empty. Cannot initialize.");
+                    showError("Firebase configuration is missing or invalid. Cannot initialize.");
                  } else {
-                     console.error("Firebase configuration is missing or empty. Cannot initialize.");
-                     alert("Critical Error: Firebase configuration missing.");
+                     console.error("Firebase configuration is missing or invalid. Cannot initialize.");
+                     alert("Critical Error: Firebase configuration missing or invalid.");
                  }
                  return false;
              }
@@ -471,26 +475,25 @@
                 auth = getAuth(app);
                 console.log("Firebase initialized successfully.");
 
-                // Sign in the user
-                 if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-                     console.log("Attempting sign in with custom token...");
-                     await signInWithCustomToken(auth, __initial_auth_token);
-                 } else {
-                     console.log("Attempting anonymous sign in...");
-                     await signInAnonymously(auth);
-                 }
+                // Sign in the user - For standalone, anonymous auth is usually sufficient
+                 console.log("Attempting anonymous sign in...");
+                 await signInAnonymously(auth);
 
                 // Listen for auth state changes to get the user ID
                 return new Promise((resolve) => {
                     onAuthStateChanged(auth, (user) => {
                         if (user) {
                             userId = user.uid;
-                            console.log("User signed in, UID:", userId);
+                            console.log("User signed in anonymously, UID:", userId);
                             resolve(true); // Firebase is ready
                         } else {
-                            console.error("User is signed out or sign-in failed.");
-                            showError("Authentication failed. Cannot save data.");
-                            resolve(false); // Firebase auth failed
+                            console.error("Anonymous sign-in failed.");
+                            // Decide if you want to block or allow submission with a temp ID
+                            // For simplicity, let's allow it for now but log a warning.
+                            console.warn("Proceeding without full anonymous auth. A temporary ID will be used on submit.");
+                            userId = null; // Ensure userId is null if auth fails initially
+                            resolve(true); // Still resolve true to allow the flow to continue
+                            // Optionally call showError("Authentication failed, but proceeding.")
                         }
                     }, (error) => {
                         console.error("Auth state change error:", error);
