@@ -466,7 +466,9 @@
                      console.error("Firebase configuration is missing or invalid. Cannot initialize.");
                      alert("Critical Error: Firebase configuration missing or invalid.");
                  }
-                 return false;
+                 // ** MODIFICATION START: Removed the return false here **
+                 // return false;
+                 // ** MODIFICATION END **
              }
 
              try {
