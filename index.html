@@ -235,23 +235,6 @@
           measurementId: "G-79LRHKKPPE" // Optional
         };
 
-        // ** MODIFICATION START: Removed the logic trying to read __firebase_config **
-        // // MANDATORY: Use __firebase_config provided by the Canvas environment
-        // let firebaseConfig = null; // We define it directly above now
-        // try {
-        //     // Check if __firebase_config is defined and not an empty string before parsing
-        //     if (typeof __firebase_config !== 'undefined' && __firebase_config.trim() !== '') {
-        //         firebaseConfig = JSON.parse(__firebase_config);
-        //     } else {
-        //          console.warn("__firebase_config is undefined or empty. Using default empty object.");
-        //          firebaseConfig = {}; // Use an empty object if config is missing/empty
-        //     }
-        // } catch (e) {
-        //     console.error("Error parsing Firebase config:", e);
-        //     // ...
-        // }
-        // ** MODIFICATION END **
-
         // Use a default appId if __app_id is not available (useful for local testing)
         // ** Note: For standalone, __app_id likely won't exist, so 'standalone-html-app-id' will be used. **
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'standalone-html-app-id';
@@ -421,8 +404,11 @@
             };
 
             try {
-                // ** Simpler path for standalone deployment **
-                const collectionPath = `experimentResponses/${appId}`;
+                // ** MODIFICATION START: Corrected Firestore collection path **
+                // Invalid path: experimentResponses/standalone-html-app-id (2 segments)
+                // Corrected path: experimentResponses (1 segment) - a top-level collection
+                const collectionPath = `experimentResponses`;
+                // ** MODIFICATION END **
                 const responsesCol = collection(db, collectionPath);
 
                 console.log("Saving to collection:", collectionPath);
